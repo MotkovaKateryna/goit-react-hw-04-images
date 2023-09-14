@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect, useCallback  } from 'react';
 
 import { fetchImages } from 'shared/images-api';
 
@@ -11,6 +11,93 @@ import Button from 'shared/Button/Button';
 import styles from './images-search.module.scss';
 import { toast } from 'react-toastify';
 
+const ImagesSearch = () => {
+  const [search, setSearch] = useState('');
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [imgDetails, setImgDetails] = useState(null);
+  const [total,setTotal]= useState(0);
+
+  useEffect(() => {
+    if (search) {
+      const onFetchImages = async () => {
+        try {
+          setLoading(true);
+          const { hits, totalHits } = await fetchImages(search, page);
+          if (hits.length === 0) {
+            toast.error('No result found!');
+          }
+          setItems(items => [...items,...hits]);
+          setTotal(totalHits);
+        } catch (error) {
+          setError(error.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      onFetchImages();
+    }
+  }, [search, page,setLoading,setItems,setError]);
+
+
+  const searchImages = query => {
+      if(query !== search) {
+      setSearch(query);
+      setItems([]);
+      setPage(1);
+      }
+  };
+
+  const openModal = useCallback ((largeImageURL, tags) => {
+  setImgDetails({largeImageURL, tags});
+  setShowModal(true);
+  },[]);
+  const loadMore = useCallback (() => {
+    setPage(prevPage => prevPage+1);
+  },[]);
+
+
+ const closeModal = useCallback (() => {
+  setShowModal(false);
+  setImgDetails(null);
+  },[]);
+
+  const body = document.querySelector('body');
+
+  const isImages = Boolean(items.length);
+  const totalPage = Math.ceil(total / 12);
+  return (
+    <div className={styles.wrapper}>
+      <Searchbar onSubmit={searchImages} />
+      <ImageGallery items={items} onClick={openModal} />
+
+      {loading && <Loader />}
+
+      {error && <p className={styles.errorMessage}>{error}</p>}
+
+      {isImages && page < totalPage && (
+        <Button onLoadMore={loadMore} text={'Load more'} />
+      )}
+
+      {showModal
+        ? body.classList.add('overflow-hidden')
+        : body.classList.remove('overflow-hidden')}
+
+      {showModal && (
+        <Modal close={closeModal}>
+          <img src={imgDetails.largeImageURL} alt={imgDetails.tags} />
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+export default ImagesSearch;
+
+/*
 class ImagesSearch extends Component {
   state = {
     search: '',
@@ -105,3 +192,4 @@ class ImagesSearch extends Component {
 }
 
 export default ImagesSearch;
+*/
